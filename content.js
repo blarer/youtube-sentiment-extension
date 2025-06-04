@@ -160,7 +160,7 @@ async function performClustering(commentsWithEmbeddings, k = 5, maxIterations = 
     }
     // ... (rest of clustering logic remains the same) ...
     let centroids = [];
-    const shuffled = [...commentsWithEmbedEmbeddings].sort(() => 0.5 - Math.random());
+    const shuffled = [...commentsWithEmbeddings].sort(() => 0.5 - Math.random());
     for (let i = 0; i < k; i++) {
         centroids.push(shuffled[i].embedding);
     }
@@ -350,7 +350,7 @@ async function processYouTubeComments() {
                 clusterAnalysis: analysisResults
             }
         });
-        updateOverlayStatus("Analysis complete!"); // Final status update
+        //updateOverlayStatus("Analysis complete!"); // Final status update
     } else {
         updateOverlayStatus("No distinct discussion points could be analyzed. Check console for errors.");
         console.error("No analysis results were obtained from clusters.");

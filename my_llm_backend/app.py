@@ -38,7 +38,7 @@ def analyze_text():
 
     try:
         # CORRECTED LINE: Prefix 'gemini-pro' with 'models/'
-        model = genai.GenerativeModel('models/gemini-pro')
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
         prompt = f"""
         Analyze the sentiment of the following text and categorize it as 'good', 'bad', or 'neutral'.
         Then, provide a brief and concise overall summarization of the text, no more than 2-3 sentences.
