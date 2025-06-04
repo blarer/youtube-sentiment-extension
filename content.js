@@ -9,16 +9,16 @@ const BACKEND_URL = "http://127.0.0.1:5000";
 function getVideoId() {
     const urlParams = new URLSearchParams(window.location.search);
     const videoId = urlParams.get('v');
-    console.log("getVideoId called. Found video ID:", videoId); // ADDED LOG
+    console.log("getVideoId called. Found video ID:", videoId);
     return videoId;
 }
 
 // Function to inject the HTML overlay
 async function injectOverlay() {
-    console.log("injectOverlay called."); // ADDED LOG
+    console.log("injectOverlay called.");
     // Check if the overlay already exists to prevent duplicates
     if (document.getElementById('sentiment-analysis-overlay')) {
-        console.log("Overlay already exists. Skipping injection."); // ADDED LOG
+        console.log("Overlay already exists. Skipping injection.");
         return;
     }
 
@@ -50,7 +50,6 @@ async function injectOverlay() {
     }
 }
 
-// ... (keep updateOverlayStatus, displayOverallSentiment, displayClusterResults as is) ...
 function updateOverlayStatus(message) {
     const statusDiv = document.getElementById('overlay-status');
     if (statusDiv) {
@@ -61,12 +60,13 @@ function updateOverlayStatus(message) {
     if (resultsDiv) {
         resultsDiv.style.display = 'none'; // Hide results when status is updated
     }
-    const clustersDiv = document.getElementById('overlay-clusters-results'); // Hide clusters for now
+    const clustersDiv = document.getElementById('overlay-clusters-results');
     if (clustersDiv) {
         clustersDiv.innerHTML = ''; // Clear previous cluster results
         clustersDiv.style.display = 'none';
     }
 }
+
 function displayOverallSentiment(sentimentCounts) {
     const statusDiv = document.getElementById('overlay-status');
     const resultsDiv = document.getElementById('overlay-results');
@@ -83,6 +83,9 @@ function displayOverallSentiment(sentimentCounts) {
     if (neutralSpan) neutralSpan.textContent = sentimentCounts.neutral || 0;
     if (totalAnalyzedSpan) totalAnalyzedSpan.textContent = sentimentCounts.total || 0;
 }
+
+// NOTE: This function was accidentally misplaced in your last paste.
+// It should be here, among the other display/UI functions.
 function displayClusterResults(analysisResults) {
     const clustersResultsDiv = document.getElementById('overlay-clusters-results');
     if (!clustersResultsDiv) {
@@ -103,16 +106,37 @@ function displayClusterResults(analysisResults) {
         li.innerHTML = `
             <strong>Point ${index + 1}</strong> (Sentiment: <span class="sentiment-${result.sentiment.toLowerCase()}">${result.sentiment}</span>, Comments: ${result.clusterSize}):<br>
             <p class="summary-text">${result.summary}</p>
-            <details>
-                <summary>Representative Text</summary>
-                <p class="representative-text">${result.representativeText}</p>
-            </details>
         `;
-        ul.appendChild(li);
+
+        // Create the <details> and <summary> elements dynamically for the comments list
+        const detailsElement = document.createElement('details');
+        const summaryElement = document.createElement('summary');
+        summaryElement.textContent = 'View All Comments in this Point'; // More descriptive text for the dropdown
+        detailsElement.appendChild(summaryElement);
+
+        const commentsListUl = document.createElement('ul');
+        commentsListUl.style.paddingLeft = '20px'; // Add some padding for nested list
+        commentsListUl.style.marginTop = '5px';
+
+        // Iterate over the stored 'clusterComments' array and create a list item for each
+        if (result.clusterComments && result.clusterComments.length > 0) {
+            result.clusterComments.forEach(commentText => {
+                const commentLi = document.createElement('li');
+                commentLi.textContent = commentText;
+                commentsListUl.appendChild(commentLi);
+            });
+        } else {
+            const noCommentsLi = document.createElement('li');
+            noCommentsLi.textContent = "No comments found for this point.";
+            commentsListUl.appendChild(noCommentsLi);
+        }
+        detailsElement.appendChild(commentsListUl);
+
+        li.appendChild(detailsElement); // Append the new details structure to the list item
+        ul.appendChild(li); // Append the whole list item to the main ul
     });
     clustersResultsDiv.appendChild(ul);
 }
-
 
 // --- Core LLM/Clustering Functions ---
 
@@ -130,7 +154,7 @@ function euclideanDistance(vec1, vec2) {
 
 // Function to get embeddings from the backend
 async function getEmbedding(text) {
-    console.log("Calling getEmbedding for text:", text.substring(0, 30) + "..."); // ADDED LOG
+    console.log("Calling getEmbedding for text:", text.substring(0, 30) + "...");
     try {
         const response = await fetch(`${BACKEND_URL}/get_embedding`, {
             method: 'POST',
@@ -140,10 +164,10 @@ async function getEmbedding(text) {
             body: JSON.stringify({ text: text })
         });
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status} - ${await response.text()}`); // Enhanced error
+            throw new Error(`HTTP error! status: ${response.status} - ${await response.text()}`);
         }
         const data = await response.json();
-        console.log("Received embedding."); // ADDED LOG
+        console.log("Received embedding.");
         return data.embedding;
     } catch (error) {
         console.error("Error getting embedding:", error);
@@ -153,12 +177,13 @@ async function getEmbedding(text) {
 
 // Function to perform basic clustering (K-Means simplified for demonstration)
 async function performClustering(commentsWithEmbeddings, k = 5, maxIterations = 50) {
-    console.log("performClustering called with", commentsWithEmbeddings.length, "comments."); // ADDED LOG
+    console.log("performClustering called with", commentsWithEmbeddings.length, "comments.");
     if (commentsWithEmbeddings.length === 0) return [];
     if (commentsWithEmbeddings.length < k) {
+        // If fewer comments than clusters, treat each comment as its own cluster
         return commentsWithEmbeddings.map(c => [c]);
     }
-    // ... (rest of clustering logic remains the same) ...
+    
     let centroids = [];
     const shuffled = [...commentsWithEmbeddings].sort(() => 0.5 - Math.random());
     for (let i = 0; i < k; i++) {
@@ -198,20 +223,20 @@ async function performClustering(commentsWithEmbeddings, k = 5, maxIterations = 
                 }
                 newCentroids.push(newCentroid);
             } else {
+                // Reinitialize empty clusters with a random comment's embedding
                 newCentroids.push(commentsWithEmbeddings[Math.floor(Math.random() * commentsWithEmbeddings.length)].embedding);
                 changed = true;
             }
         }
         centroids = newCentroids;
-        if (!changed) break;
+        if (!changed) break; // Stop if centroids haven't changed significantly
     }
-    return clusters.filter(c => c.length > 0);
+    return clusters.filter(c => c.length > 0); // Return only non-empty clusters
 }
-
 
 // Function to analyze text (sentiment and summary) from the backend
 async function analyzeText(text) {
-    console.log("Calling analyzeText for text:", text.substring(0, 30) + "..."); // ADDED LOG
+    console.log("Calling analyzeText for text:", text.substring(0, 30) + "...");
     try {
         const response = await fetch(`${BACKEND_URL}/analyze_text`, {
             method: 'POST',
@@ -221,10 +246,10 @@ async function analyzeText(text) {
             body: JSON.stringify({ text: text })
         });
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status} - ${await response.text()}`); // Enhanced error
+            throw new Error(`HTTP error! status: ${response.status} - ${await response.text()}`);
         }
         const data = await response.json();
-        console.log("Received sentiment/summary."); // ADDED LOG
+        console.log("Received sentiment/summary.");
         return data;
     } catch (error) {
         console.error("Error analyzing text:", error);
@@ -234,7 +259,7 @@ async function analyzeText(text) {
 
 // NEW Function: Fetch YouTube Comments from backend
 async function fetchYouTubeComments(videoId) {
-    console.log("fetchYouTubeComments called for video ID:", videoId); // ADDED LOG
+    console.log("fetchYouTubeComments called for video ID:", videoId);
     updateOverlayStatus("Fetching comments via YouTube Data API...");
     try {
         const response = await fetch(`${BACKEND_URL}/get_youtube_comments`, {
@@ -245,10 +270,10 @@ async function fetchYouTubeComments(videoId) {
             body: JSON.stringify({ videoId: videoId })
         });
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status} - ${await response.text()}`); // Enhanced error
+            throw new Error(`HTTP error! status: ${response.status} - ${await response.text()}`);
         }
         const data = await response.json();
-        console.log(`Received ${data.comments ? data.comments.length : 0} comments from backend.`); // ADDED LOG
+        console.log(`Received ${data.comments ? data.comments.length : 0} comments from backend.`);
         return data.comments || [];
     } catch (error) {
         console.error("Error fetching YouTube comments from backend:", error);
@@ -257,32 +282,29 @@ async function fetchYouTubeComments(videoId) {
     }
 }
 
-
 // Main function to orchestrate the process
 async function processYouTubeComments() {
-    console.log("processYouTubeComments called. Starting analysis workflow."); // ADDED LOG
+    console.log("processYouTubeComments called. Starting analysis workflow.");
     updateOverlayStatus("YouTube Sentiment Extension: Initializing...");
 
-    const videoId = getVideoId(); // Get video ID at the start
+    const videoId = getVideoId();
     if (!videoId) {
         updateOverlayStatus("Not a YouTube video page or could not find video ID.");
-        console.log("processYouTubeComments: No video ID found."); // ADDED LOG
-        return; // Stop if no video ID
+        console.log("processYouTubeComments: No video ID found.");
+        return;
     }
 
-    // Now, fetch comments from the backend
     const comments = await fetchYouTubeComments(videoId);
 
     if (comments.length === 0) {
         updateOverlayStatus("No comments found via YouTube Data API. Try reloading or check API quotas.");
-        console.log("No comments fetched from backend."); // ADDED LOG
+        console.log("No comments fetched from backend.");
         return;
     }
 
     updateOverlayStatus(`Found ${comments.length} comments. Getting embeddings...`);
     const commentsWithEmbeddings = [];
     let processedEmbeddingCount = 0;
-    // Limit to 100 embeddings for efficiency/quota management in development
     const embeddingLimit = Math.min(comments.length, 100); 
 
     for (let i = 0; i < embeddingLimit; i++) {
@@ -292,7 +314,6 @@ async function processYouTubeComments() {
             commentsWithEmbeddings.push({ text: commentText, embedding: embedding });
         }
         processedEmbeddingCount++;
-        // Update status only periodically or for large sets to avoid too many DOM updates
         if (processedEmbeddingCount % 10 === 0 || processedEmbeddingCount === embeddingLimit) {
             updateOverlayStatus(`Getting embeddings (${processedEmbeddingCount}/${embeddingLimit})...`); 
         }
@@ -306,8 +327,8 @@ async function processYouTubeComments() {
 
     updateOverlayStatus(`Received embeddings for ${commentsWithEmbeddings.length} comments. Performing clustering...`);
     const numClusters = Math.min(
-        Math.max(3, Math.floor(commentsWithEmbeddings.length / 10)), // At least 3 clusters, or 1 per 10 comments
-        10 // Max 10 clusters to keep analysis manageable
+        Math.max(3, Math.floor(commentsWithEmbeddings.length / 10)),
+        10
     );
     const clusters = await performClustering(commentsWithEmbeddings, numClusters);
 
@@ -316,16 +337,26 @@ async function processYouTubeComments() {
     const analysisResults = [];
     let overallSentimentCounts = { good: 0, bad: 0, neutral: 0, total: 0 };
 
+    // This is the crucial loop that processes each cluster
     for (const cluster of clusters) {
         if (cluster.length > 0) {
-            const representativeText = cluster[0].text; // Simple representative
-            const analysis = await analyzeText(representativeText);
+            // Comments to send to LLM for summary (still limited to manage tokens)
+            const commentsToSummarize = cluster.slice(0, 5).map(c => c.text).join('\n\n'); 
+            
+            // Get ALL comments from this cluster for display in the dropdown
+            const allCommentsInCluster = cluster.map(c => c.text);
+
+            // A simple representative text for the main summary section (can be the first comment)
+            const displayRepresentativeText = cluster[0].text; 
+
+            const analysis = await analyzeText(commentsToSummarize); 
             
             if (analysis) {
                 analysisResults.push({
-                    representativeText: representativeText,
+                    representativeText: displayRepresentativeText, // Still used for initial display
+                    clusterComments: allCommentsInCluster, // Stores all comments for dropdown
                     sentiment: analysis.sentiment,
-                    summary: analysis.summary,
+                    summary: analysis.summary, 
                     clusterSize: cluster.length
                 });
                 const sentimentCategory = analysis.sentiment.toLowerCase();
@@ -350,7 +381,7 @@ async function processYouTubeComments() {
                 clusterAnalysis: analysisResults
             }
         });
-        //updateOverlayStatus("Analysis complete!"); // Final status update
+        // **FIXED:** Removed: updateOverlayStatus("Analysis complete!"); // This line was hiding the results
     } else {
         updateOverlayStatus("No distinct discussion points could be analyzed. Check console for errors.");
         console.error("No analysis results were obtained from clusters.");
@@ -366,10 +397,11 @@ async function processYouTubeComments() {
 (async function() {
     console.log("Content script initiated.");
     // Check if it's a YouTube video page
-    // CORRECTED LINE: Use 'youtube.com' to check the actual hostname
+    // Note: The hostname for YouTube can vary based on context (e.g., normal browse vs. embedded)
+    // Using includes('youtube.com') is generally robust.
     if (window.location.hostname.includes('youtube.com') && window.location.pathname.startsWith('/watch')) {
         console.log("On a YouTube video page. Injecting overlay...");
-        await injectOverlay(); // Inject the UI as soon as possible
+        await injectOverlay();
         // Automatically start the analysis after overlay injection
         processYouTubeComments();
     } else {
@@ -379,7 +411,7 @@ async function processYouTubeComments() {
 
 // --- Listen for messages from the background script ---
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    console.log("Message received in content.js:", request.action); // ADDED LOG
+    console.log("Message received in content.js:", request.action);
     if (request.action === "startAnalysis") {
         const videoId = getVideoId();
         if (videoId) {

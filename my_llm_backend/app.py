@@ -5,12 +5,13 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 from flask_cors import CORS
 import requests # To make HTTP requests to the YouTube Data API
+import json # Import the json module for parsing LLM responses
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app) # Add this line right after app initialization
 
 # Configure the Google Gemini API key
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -23,56 +24,84 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 if not YOUTUBE_API_KEY:
     raise ValueError("YOUTUBE_API_KEY environment variable not set. Please create a .env file with your YouTube Data API v3 key.")
 
-# --- Existing Endpoints (analyze_text, get_embedding) ---
-
 @app.route('/analyze_text', methods=['POST'])
 def analyze_text():
     """
-    Receives text, analyzes sentiment, and summarizes using Google Gemini API (gemini-pro).
+    Receives text, analyzes sentiment, and summarizes using Google Gemini API.
+    Now specifically requests and parses JSON output from Gemini.
     """
     data = request.get_json()
     if not data or 'text' not in data:
         return jsonify({"error": "No 'text' field found in request body"}), 400
 
-    text_to_analyze = data['text']
+    text_to_analyze = data['text'] # This is the variable used in the prompt
 
     try:
-        # CORRECTED LINE: Prefix 'gemini-pro' with 'models/'
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        model = genai.GenerativeModel('models/gemini-1.5-flash') # Or 'models/gemini-pro' if you prefer
+        
+        # --- REVISED PROMPT TO ASK FOR JSON ---
         prompt = f"""
-        Analyze the sentiment of the following text and categorize it as 'good', 'bad', or 'neutral'.
-        Then, provide a brief and concise overall summarization of the text, no more than 2-3 sentences.
+        You are an AI assistant specialized in analyzing YouTube comments.
+        Your explicit purpose is to summarize distinct discussion points and determine their overall sentiment.
 
-        Format your response as follows:
-        Sentiment: [good/bad/neutral]
-        Summary: [Your concise summarization here]
+        You are being provided with a collection of YouTube comments that belong to a specific, clustered discussion point.
+        **These comments come from multiple different users**, not a single individual commenter.
 
-        Text:
+        Your task is to:
+        1.  Carefully read and understand the main themes, key opinions, and overall context expressed within this group of comments.
+        2.  **Crucially, when summarizing, avoid attributing statements to a single 'commenter' or 'user'.** Instead, use collective terms such as "users," "commenters," "the discussion," "this group of comments," or "the cluster discusses."
+        3.  Provide a concise summary of this particular discussion point. The summary should be brief, no more than 2-3 sentences, and clearly reflect the collective sentiment and main ideas.
+        4.  Determine the overall sentiment of this discussion point based on the collective comments. Choose one of the following categories: 'Positive', 'Negative', or 'Neutral'.
+
+        The comments from this cluster to analyze are:
+        ---
         {text_to_analyze}
+        ---
+
+        Your response MUST be a JSON object with exactly two keys: 'sentiment' and 'summary'.
+        -   The 'sentiment' key should contain one of 'Positive', 'Negative', or 'Neutral'.
+        -   The 'summary' key should contain your concise summary string.
+
+        Example of desired response format:
+        {{
+            "sentiment": "Positive",
+            "summary": "Users in this cluster are highly enthusiastic about the video's production quality and comedic timing, with many expressing a desire for more content."
+        }}
         """
-        print(f"Calling Gemini API (gemini-pro) for analysis of text: '{text_to_analyze[:50]}...'")
+        # --- END OF REVISED PROMPT ---
+        
+        print(f"Calling Gemini API ({model.model_name}) for analysis of text: '{text_to_analyze[:50]}...'")
         response = model.generate_content(prompt)
-        print("Received response from Gemini API for analysis.")
+        print(f"Received response from Gemini API for analysis. Raw text: {response.text[:200]}...")
 
+        # --- NEW JSON PARSING LOGIC ---
         generated_text = response.text.strip()
-        sentiment = "N/A"
-        summary = "N/A"
+        
+        # Remove potential markdown code block wrappers if Gemini adds them
+        if generated_text.startswith('```json'):
+            generated_text = generated_text.lstrip('```json').rstrip('```')
+        elif generated_text.startswith('```'): # Catch general code blocks
+            generated_text = generated_text.lstrip('```').rstrip('```')
+            
+        response_json = json.loads(generated_text) # Attempt to parse as JSON
 
-        lines = generated_text.split('\n')
-        for line in lines:
-            if line.lower().startswith("sentiment:"):
-                sentiment = line.split(":", 1)[1].strip()
-            elif line.lower().startswith("summary:"):
-                summary = line.split(":", 1)[1].strip()
+        sentiment = response_json.get('sentiment')
+        summary = response_json.get('summary')
+
+        if sentiment is None or summary is None: # Check if keys are actually present
+            raise ValueError("Gemini response missing 'sentiment' or 'summary' key, or format is incorrect.")
         
         return jsonify({
             "sentiment": sentiment,
             "summary": summary
         }), 200
 
+    except json.JSONDecodeError as e:
+        print(f"Error parsing Gemini response as JSON. Response was: '{generated_text}' - Error: {e}")
+        return jsonify({"error": f"Failed to parse Gemini JSON response: {e}. Raw: {generated_text[:200]}"}), 500
     except Exception as e:
-        print(f"Error calling Gemini API for analysis: {e}")
-        return jsonify({"error": f"Internal server error: {e}"}), 500
+        print(f"An unexpected error occurred during analyze_text: {e}")
+        return jsonify({"error": f"Internal server error during analysis: {e}"}), 500
 
 @app.route('/get_embedding', methods=['POST'])
 def get_embedding():
@@ -86,10 +115,9 @@ def get_embedding():
     text_to_embed = data['text']
 
     try:
-        # CORRECTED LINE: Prefix 'embedding-001' with 'models/'
         print(f"Calling Gemini API (embedding-001) for text: '{text_to_embed[:50]}...'")
         response = genai.embed_content(
-            model='models/embedding-001', # Prefix with 'models/'
+            model='models/embedding-001',
             content=text_to_embed
         )
         print("Received embedding from Gemini API.")
