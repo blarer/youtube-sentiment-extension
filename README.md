@@ -46,7 +46,7 @@ This branch of the YouTube Comment Sentiment Analysis Chrome Extension represent
 2.  **Embedding Generation:** Each fetched comment is sent to a Flask backend, which uses Google Gemini's `embedding-001` model to generate a numerical vector (embedding) representing its semantic meaning.
 3.  **Advanced Clustering & Dimensionality Reduction (Backend Process):** Comments and their embeddings are then processed by the backend Python server (`my_llm_backend/app.py`). Here's the advanced pipeline:
     * **UMAP Reduction:** The high-dimensional embeddings are first reduced to a more manageable 10 components using UMAP. This step helps in distilling the most important features for clustering.
-        ![UMAP Dimensionality Reduction Diagram](images/umap_process.png)
+        ![UMAP Dimensionality Reduction Diagram](images/umap_process.webp)
         *(Suggested image: A diagram illustrating UMAP's process of reducing dimensions while preserving local and global structures, perhaps showing points going from 3D to 2D.)*
     * **HDBSCAN Clustering:** The reduced embeddings are then fed into HDBSCAN, which identifies core clusters, sub-clusters, and noise points based on data density.
         ![HDBSCAN Clustering Result - showing varied shapes and noise](images/hdbscan_result.png)
