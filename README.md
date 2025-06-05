@@ -27,6 +27,8 @@ This branch of the YouTube Comment Sentiment Analysis Chrome Extension represent
 
 * **Enhanced Chart.js Integration:** The extension now features a more robust and reliable display of sentiment distribution through **Chart.js**. We've implemented dynamic loading, proper destruction of previous chart instances, and rigorous availability checks to ensure the sentiment pie chart renders consistently and without conflicts.
 
+![Enhanced Chart.js Integration](images/pie.png)
+
 **WIP Notice:** This extension is currently a **Work in Progress (WIP)** and is under active development. Our goal is to evolve this into a fully-featured Chrome Extension with enhanced capabilities.
 
 ## Features
