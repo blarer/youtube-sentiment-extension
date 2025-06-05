@@ -24,6 +24,7 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 if not YOUTUBE_API_KEY:
     raise ValueError("YOUTUBE_API_KEY environment variable not set. Please create a .env file with your YouTube Data API v3 key.")
 
+
 @app.route('/analyze_text', methods=['POST'])
 def analyze_text():
     """

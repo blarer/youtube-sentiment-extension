@@ -286,8 +286,12 @@ async function fetchYouTubeComments(videoId) {
 
 // Main function to orchestrate the process
 async function processYouTubeComments() {
+    const myToken = Symbol();
+    currentAnalysisToken = myToken;
+
     console.log("processYouTubeComments called. Starting analysis workflow.");
     updateOverlayStatus("YouTube Sentiment Extension: Initializing...");
+    if (currentAnalysisToken !== myToken) return;
 
     const videoId = getVideoId();
     if (!videoId) {
@@ -295,14 +299,17 @@ async function processYouTubeComments() {
         console.log("processYouTubeComments: No video ID found.");
         return;
     }
+    if (currentAnalysisToken !== myToken) return;
 
     const comments = await fetchYouTubeComments(videoId);
+    if (currentAnalysisToken !== myToken) return;
 
     if (comments.length === 0) {
         updateOverlayStatus("No comments found via YouTube Data API. Try reloading or check API quotas.");
         console.log("No comments fetched from backend.");
         return;
     }
+    if (currentAnalysisToken !== myToken) return;
 
     updateOverlayStatus(`Found ${comments.length} comments. Getting embeddings...`);
     const commentsWithEmbeddings = [];
@@ -310,6 +317,7 @@ async function processYouTubeComments() {
     const embeddingLimit = Math.min(comments.length, 100); 
 
     for (let i = 0; i < embeddingLimit; i++) {
+        if (currentAnalysisToken !== myToken) return;
         const commentText = comments[i];
         const embedding = await getEmbedding(commentText);
         if (embedding) {
@@ -320,12 +328,14 @@ async function processYouTubeComments() {
             updateOverlayStatus(`Getting embeddings (${processedEmbeddingCount}/${embeddingLimit})...`); 
         }
     }
+    if (currentAnalysisToken !== myToken) return;
 
     if (commentsWithEmbeddings.length === 0) {
         updateOverlayStatus("Failed to get embeddings for any comments. Check backend server and API key.");
         console.error("Failed to get embeddings for any comments.");
         return;
     }
+    if (currentAnalysisToken !== myToken) return;
 
     updateOverlayStatus(`Received embeddings for ${commentsWithEmbeddings.length} comments. Performing clustering...`);
     const numClusters = Math.min(
@@ -333,37 +343,30 @@ async function processYouTubeComments() {
         10
     );
     const clusters = await performClustering(commentsWithEmbeddings, numClusters);
+    if (currentAnalysisToken !== myToken) return;
 
     updateOverlayStatus(`Clustering complete. Found ${clusters.length} distinct discussion points. Analyzing...`);
 
     const analysisResults = [];
-    // CORRECTED: Initializing overallSentimentCounts with 'positive', 'negative', 'neutral' keys
     let overallSentimentCounts = { positive: 0, negative: 0, neutral: 0, total: 0 };
 
-    // This is the crucial loop that processes each cluster
     for (const cluster of clusters) {
+        if (currentAnalysisToken !== myToken) return;
         if (cluster.length > 0) {
-            // Comments to send to LLM for summary (still limited to manage tokens)
             const commentsToSummarize = cluster.slice(0, 5).map(c => c.text).join('\n\n'); 
-            
-            // Get ALL comments from this cluster for display in the dropdown
             const allCommentsInCluster = cluster.map(c => c.text);
-
-            // A simple representative text for the main summary section (can be the first comment)
             const displayRepresentativeText = cluster[0].text; 
-
             const analysis = await analyzeText(commentsToSummarize); 
-            
+            if (currentAnalysisToken !== myToken) return;
             if (analysis) {
                 analysisResults.push({
-                    representativeText: displayRepresentativeText, // Still used for initial display
-                    clusterComments: allCommentsInCluster, // Stores all comments for dropdown
+                    representativeText: displayRepresentativeText,
+                    clusterComments: allCommentsInCluster,
                     sentiment: analysis.sentiment,
                     summary: analysis.summary, 
                     clusterSize: cluster.length
                 });
-                const sentimentCategory = analysis.sentiment.toLowerCase(); // Will be 'positive', 'negative', 'neutral'
-                // CORRECTED: Incrementing counts based on the 'positive', 'negative', 'neutral' keys
+                const sentimentCategory = analysis.sentiment.toLowerCase();
                 if (overallSentimentCounts[sentimentCategory] !== undefined) {
                     overallSentimentCounts[sentimentCategory]++;
                 }
@@ -371,12 +374,12 @@ async function processYouTubeComments() {
             }
         }
     }
+    if (currentAnalysisToken !== myToken) return;
 
     if (analysisResults.length > 0) {
         console.log("--- Sentiment & Summary by Cluster ---");
-        displayOverallSentiment(overallSentimentCounts); // This function is now also updated
+        displayOverallSentiment(overallSentimentCounts);
         displayClusterResults(analysisResults);
-
         chrome.runtime.sendMessage({
             action: "analysisComplete",
             success: true,
@@ -396,19 +399,41 @@ async function processYouTubeComments() {
     }
 }
 
-// --- Main logic when content script runs (initial injection and auto-start) ---
-(async function() {
-    console.log("Content script initiated.");
-    // Check if it's a YouTube video page
-    if (window.location.hostname.includes('youtube.com') && window.location.pathname.startsWith('/watch')) { // Corrected hostname check
-        console.log("On a YouTube video page. Injecting overlay...");
-        await injectOverlay();
-        // Automatically start the analysis after overlay injection
-        processYouTubeComments();
-    } else {
-        console.log("Not on a YouTube video page. Extension will not activate automatically.");
+let currentVideoId = null;
+let currentAnalysisToken = null;
+
+function handleNavigation() {
+    const isVideoPage = window.location.hostname.includes('youtube.com') && window.location.pathname.startsWith('/watch');
+    const videoId = getVideoId();
+
+    if (isVideoPage && videoId !== currentVideoId) {
+        currentVideoId = videoId;
+        const existingOverlay = document.getElementById('sentiment-analysis-overlay');
+        if (existingOverlay) existingOverlay.remove();
+        injectOverlay().then(() => {
+            processYouTubeComments();
+        });
+    } else if (!isVideoPage && document.getElementById('sentiment-analysis-overlay')) {
+        document.getElementById('sentiment-analysis-overlay').remove();
+        currentVideoId = null;
+        currentAnalysisToken = null; // Invalidate any running analysis
     }
-})();
+}
+
+// Listen for YouTube navigation events (works for most modern YouTube navigation)
+window.addEventListener('yt-navigate-finish', handleNavigation);
+
+// Fallback: Poll for URL changes every 500ms (for browsers/extensions where the event doesn't fire)
+let lastUrl = location.href;
+setInterval(() => {
+    if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        handleNavigation();
+    }
+}, 500);
+
+// Initial check on script load
+handleNavigation();
 
 // --- Listen for messages from the background script ---
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
