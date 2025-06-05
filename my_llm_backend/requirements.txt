@@ -1,0 +1,8 @@
+flask
+google-generativeai
+python-dotenv
+flask-cors
+requests
+numpy
+umap-learn
+hdbscan

@@ -46,9 +46,8 @@ async function injectOverlay() {
         });
         console.log("Overlay injected successfully.");
 
-        // After overlay is injected, load Chart.js and apply dark mode
-        loadChartJs(); // Load Chart.js dynamically
-
+        // After overlay is injected, apply dark mode (Chart.js is already loaded)
+        
         chrome.runtime.sendMessage(
             { action: "getDarkMode" },
             (response) => {
@@ -271,6 +270,7 @@ async function analyzeText(text) {
 
 // NEW Function: Fetch YouTube Comments from backend
 async function fetchYouTubeComments(videoId) {
+    console.log("Sending POST to /get_youtube_comments with videoId:", videoId);
     console.log("fetchYouTubeComments called for video ID:", videoId);
     updateOverlayStatus("Fetching comments via YouTube Data API...");
     try {
@@ -322,22 +322,35 @@ async function processYouTubeComments() {
     if (currentAnalysisToken !== myToken) return;
 
     updateOverlayStatus(`Found ${comments.length} comments. Getting embeddings...`);
-    const commentsWithEmbeddings = [];
+    const embeddingLimit = Math.min(comments.length, 100);
+    // Only process up to embeddingLimit comments
+    const commentsToEmbed = comments.slice(0, embeddingLimit);
     let processedEmbeddingCount = 0;
-    const embeddingLimit = Math.min(comments.length, 100); 
 
-    for (let i = 0; i < embeddingLimit; i++) {
-        if (currentAnalysisToken !== myToken) return;
-        const commentText = comments[i];
-        const embedding = await getEmbedding(commentText);
-        if (embedding) {
-            commentsWithEmbeddings.push({ text: commentText, embedding: embedding });
-        }
-        processedEmbeddingCount++;
-        if (processedEmbeddingCount % 10 === 0 || processedEmbeddingCount === embeddingLimit) {
-            updateOverlayStatus(`Getting embeddings (${processedEmbeddingCount}/${embeddingLimit})...`); 
-        }
-    }
+    // Map each comment to a fetch promise
+    const embeddingPromises = commentsToEmbed.map((comment, idx) =>
+        fetch(`${BACKEND_URL}/get_embedding`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: comment })
+        })
+        .then(res => res.json())
+        .then(data => {
+            processedEmbeddingCount++;
+            if (processedEmbeddingCount % 10 === 0 || processedEmbeddingCount === embeddingLimit) {
+                updateOverlayStatus(`Getting embeddings (${processedEmbeddingCount}/${embeddingLimit})...`);
+            }
+            return { text: comment, embedding: data.embedding };
+        })
+        .catch(err => {
+            console.error('Error getting embedding:', err);
+            return null;
+        })
+    );
+
+    // Wait for all embedding fetches to complete
+    const commentsWithEmbeddings = (await Promise.all(embeddingPromises))
+        .filter(obj => obj && Array.isArray(obj.embedding) && obj.embedding.length > 0);
     if (currentAnalysisToken !== myToken) return;
 
     if (commentsWithEmbeddings.length === 0) {
@@ -346,6 +359,10 @@ async function processYouTubeComments() {
         return;
     }
     if (currentAnalysisToken !== myToken) return;
+
+    if (commentsWithEmbeddings.length < commentsToEmbed.length) {
+        console.warn(`Filtered out ${commentsToEmbed.length - commentsWithEmbeddings.length} comments due to missing embeddings.`);
+    }
 
     updateOverlayStatus(`Received embeddings for ${commentsWithEmbeddings.length} comments. Performing clustering...`);
     const numClusters = Math.min(
