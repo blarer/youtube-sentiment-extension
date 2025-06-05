@@ -6,12 +6,15 @@ from dotenv import load_dotenv
 from flask_cors import CORS
 import requests # To make HTTP requests to the YouTube Data API
 import json # Import the json module for parsing LLM responses
+import numpy as np
+import umap
+import hdbscan
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app) # Add this line right after app initialization
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Configure the Google Gemini API key
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -200,6 +203,42 @@ def get_youtube_comments():
         print(f"An unexpected error occurred: {e}")
         return jsonify({"error": f"Internal server error: {e}"}), 500
 
+@app.route('/cluster_comments', methods=['POST'])
+def cluster_comments():
+    """
+    Receives a list of embeddings and sentiments, reduces dimensionality with UMAP,
+    clusters with HDBSCAN, and returns cluster labels and sentiment counts per cluster.
+    """
+    data = request.get_json()
+    embeddings = data.get('embeddings')
+    sentiments = data.get('sentiments')
+    if not embeddings or not isinstance(embeddings, list):
+        return jsonify({"error": "No 'embeddings' list found in request body"}), 400
+    if not sentiments or not isinstance(sentiments, list) or len(sentiments) != len(embeddings):
+        return jsonify({"error": "No 'sentiments' list found or length mismatch"}), 400
+
+    embeddings_np = np.array(embeddings)
+    umap_reducer = umap.UMAP(n_components=10, random_state=42)
+    reduced_embeddings = umap_reducer.fit_transform(embeddings_np)
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=5)
+    labels = clusterer.fit_predict(reduced_embeddings)
+
+    # Count sentiments per cluster
+    cluster_sentiment_counts = {}
+    for label, sentiment in zip(labels, sentiments):
+        if label == -1:
+            continue  # -1 is noise in HDBSCAN
+        if label not in cluster_sentiment_counts:
+            cluster_sentiment_counts[label] = {"positive": 0, "negative": 0, "neutral": 0, "total": 0}
+        sentiment_key = sentiment.lower()
+        if sentiment_key in cluster_sentiment_counts[label]:
+            cluster_sentiment_counts[label][sentiment_key] += 1
+        cluster_sentiment_counts[label]["total"] += 1
+
+    return jsonify({
+        "labels": labels.tolist(),
+        "cluster_sentiment_counts": cluster_sentiment_counts
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

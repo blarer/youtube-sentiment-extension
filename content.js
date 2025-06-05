@@ -46,7 +46,9 @@ async function injectOverlay() {
         });
         console.log("Overlay injected successfully.");
 
-        // After overlay is injected, apply dark mode if needed
+        // After overlay is injected, load Chart.js and apply dark mode
+        loadChartJs(); // Load Chart.js dynamically
+
         chrome.runtime.sendMessage(
             { action: "getDarkMode" },
             (response) => {
@@ -388,6 +390,7 @@ async function processYouTubeComments() {
         console.log("--- Sentiment & Summary by Cluster ---");
         displayOverallSentiment(overallSentimentCounts);
         displayClusterResults(analysisResults);
+        renderSentimentPieChart(overallSentimentCounts);
         chrome.runtime.sendMessage({
             action: "analysisComplete",
             success: true,
@@ -479,4 +482,69 @@ function setOverlayDarkMode(isDark) {
             overlay.classList.remove('dark-mode');
         }
     }
+}
+
+function renderSentimentPieChart(sentimentCounts) {
+    console.log("renderSentimentPieChart called with data:", sentimentCounts);
+
+    const canvas = document.getElementById('sentimentPieChart');
+    if (!canvas) {
+        console.error("Canvas element with ID 'sentimentPieChart' not found!");
+        return; // Exit if canvas is not found
+    }
+    const ctx = canvas.getContext('2d');
+    console.log("Canvas context obtained:", ctx);
+
+    // --- Add these new logs ---
+    console.log("Type of window.Chart:", typeof window.Chart);
+    console.log("Value of window.sentimentPieChart BEFORE destroy:", window.sentimentPieChart);
+    // --- End new logs ---
+
+    // Destroy previous chart if it exists and is a Chart instance
+    if (window.sentimentPieChart && typeof window.sentimentPieChart.destroy === 'function') {
+        window.sentimentPieChart.destroy();
+        console.log("Destroyed previous chart.");
+    } else {
+        console.log("No previous chart instance to destroy or it's not a valid Chart instance.");
+    }
+
+    console.log("Attempting to create new Chart instance.");
+    // --- Add this new log ---
+    console.log("Type of window.Chart BEFORE new Chart():", typeof window.Chart);
+    // --- End new log ---
+
+    if (typeof window.Chart !== 'function') {
+         console.error("Chart.js is not available (window.Chart is not a function). Cannot render chart.");
+         return; // Exit if Chart.js is not available
+    }
+
+    window.sentimentPieChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Positive', 'Negative', 'Neutral'],
+            datasets: [{
+                data: [
+                    sentimentCounts.positive || 0,
+                    sentimentCounts.negative || 0,
+                    sentimentCounts.neutral || 0
+                ],
+                backgroundColor: [
+                    'rgba(40, 200, 40, 0.7)',
+                    'rgba(220, 50, 50, 0.7)',
+                    'rgba(255, 180, 50, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(40, 200, 40, 1)',
+                    'rgba(220, 50, 50, 1)',
+                    'rgba(255, 180, 50, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { display: true, position: 'bottom' }
+            }
+        }
+    });
 }

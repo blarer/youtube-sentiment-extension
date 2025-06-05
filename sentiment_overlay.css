@@ -212,3 +212,22 @@ summary:hover {
 .sentiment-analysis-overlay * {
     transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
+
+#sentiment-summary-chart-container {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+#sentiment-summary {
+    flex: 1 1 60%; /* Allows summary to take up space, can grow/shrink */
+}
+
+#sentimentPieChart {
+    flex: 0 0 120px; /* Fixed size, won't grow/shrink */
+    max-width: 120px;
+    max-height: 120px;
+    margin-top: 10px; /* This might push it down slightly if align-items is flex-start */
+}

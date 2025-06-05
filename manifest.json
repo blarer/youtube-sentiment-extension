@@ -5,7 +5,8 @@
   "description": "Analyzes YouTube comments for sentiment and summarizes discussion points.",
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "storage"
   ],
   "host_permissions": [
     "*://www.youtube.com/*",
@@ -17,7 +18,8 @@
   "content_scripts": [
     {
       "matches": ["*://www.youtube.com/*"],
-      "js": ["content.js"],
+      "js": ["libs/Chart.min.js", "content.js"],
+      "css": ["sentiment_overlay.css"],
       "run_at": "document_idle"
     }
   ],
@@ -34,5 +36,8 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   }
 }
