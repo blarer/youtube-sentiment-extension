@@ -107,16 +107,21 @@
     white-space: pre-wrap; /* Preserve formatting for representative text */
 }
 
-.sentiment-good {
+.sentiment-positive {
     color: green;
     font-weight: bold;
 }
-.sentiment-bad {
+.sentiment-negative {
     color: red;
     font-weight: bold;
 }
 .sentiment-neutral {
     color: orange;
+    font-weight: bold;
+}
+
+.sentiment-mixed {
+    color: #8a5cff;
     font-weight: bold;
 }
 
@@ -131,4 +136,79 @@ summary {
 }
 summary:hover {
     text-decoration: underline;
+}
+
+/* --- Dark Mode Styles --- */
+
+/* Base Dark Mode for the entire overlay */
+.sentiment-analysis-overlay.dark-mode {
+    background-color: #2b2b2b;
+    color: #e0e0e0;
+    border: 1px solid #444;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.sentiment-analysis-overlay.dark-mode .overlay-header {
+    background-color: #333;
+    border-bottom: 1px solid #444;
+}
+
+.sentiment-analysis-overlay.dark-mode .overlay-header h2 {
+    color: #e0e0e0;
+}
+
+.sentiment-analysis-overlay.dark-mode #overlay-close-button {
+    color: #999;
+}
+
+.sentiment-analysis-overlay.dark-mode #overlay-close-button:hover {
+    color: #fff;
+}
+
+.sentiment-analysis-overlay.dark-mode #overlay-status {
+    color: #bbb;
+}
+
+.sentiment-analysis-overlay.dark-mode #overlay-results h3,
+.sentiment-analysis-overlay.dark-mode #overlay-clusters-results h3 {
+    color: #e0e0e0;
+    border-top: 1px solid #444;
+}
+
+.sentiment-analysis-overlay.dark-mode #overlay-clusters-results li {
+    background-color: #333;
+    border: 1px solid #444;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.sentiment-analysis-overlay.dark-mode .representative-text {
+    color: #bbb;
+}
+
+.sentiment-analysis-overlay.dark-mode summary {
+    color: #4dabf7;
+}
+
+/* Dark mode specific text colors for sentiment */
+.sentiment-analysis-overlay.dark-mode .sentiment-positive {
+    color: #8aff8a;
+}
+
+.sentiment-analysis-overlay.dark-mode .sentiment-negative {
+    color: #ff8a8a;
+}
+
+.sentiment-analysis-overlay.dark-mode .sentiment-neutral {
+    color: #ffe08a;
+}
+
+/* Dark mode specific text color for mixed sentiment */
+.sentiment-analysis-overlay.dark-mode .sentiment-mixed {
+    color: #bbaaff;
+}
+
+/* Smooth transition for general color changes */
+.sentiment-analysis-overlay,
+.sentiment-analysis-overlay * {
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }

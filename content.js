@@ -67,6 +67,7 @@ function updateOverlayStatus(message) {
     }
 }
 
+// CORRECTED: Updated to use 'positive', 'negative', 'neutral' keys for counts
 function displayOverallSentiment(sentimentCounts) {
     const statusDiv = document.getElementById('overlay-status');
     const resultsDiv = document.getElementById('overlay-results');
@@ -78,14 +79,13 @@ function displayOverallSentiment(sentimentCounts) {
     if (statusDiv) statusDiv.style.display = 'none';
     if (resultsDiv) resultsDiv.style.display = 'block';
 
-    if (positiveSpan) positiveSpan.textContent = sentimentCounts.good || 0;
-    if (negativeSpan) negativeSpan.textContent = sentimentCounts.bad || 0;
+    // Update text content using the new keys ('positive', 'negative', 'neutral')
+    if (positiveSpan) positiveSpan.textContent = sentimentCounts.positive || 0;
+    if (negativeSpan) negativeSpan.textContent = sentimentCounts.negative || 0;
     if (neutralSpan) neutralSpan.textContent = sentimentCounts.neutral || 0;
     if (totalAnalyzedSpan) totalAnalyzedSpan.textContent = sentimentCounts.total || 0;
 }
 
-// NOTE: This function was accidentally misplaced in your last paste.
-// It should be here, among the other display/UI functions.
 function displayClusterResults(analysisResults) {
     const clustersResultsDiv = document.getElementById('overlay-clusters-results');
     if (!clustersResultsDiv) {
@@ -103,6 +103,8 @@ function displayClusterResults(analysisResults) {
     const ul = document.createElement('ul');
     analysisResults.forEach((result, index) => {
         const li = document.createElement('li');
+        // The sentiment class should already be correctly formed from result.sentiment.toLowerCase()
+        // e.g., 'sentiment-positive', 'sentiment-negative', 'sentiment-neutral'
         li.innerHTML = `
             <strong>Point ${index + 1}</strong> (Sentiment: <span class="sentiment-${result.sentiment.toLowerCase()}">${result.sentiment}</span>, Comments: ${result.clusterSize}):<br>
             <p class="summary-text">${result.summary}</p>
@@ -335,7 +337,8 @@ async function processYouTubeComments() {
     updateOverlayStatus(`Clustering complete. Found ${clusters.length} distinct discussion points. Analyzing...`);
 
     const analysisResults = [];
-    let overallSentimentCounts = { good: 0, bad: 0, neutral: 0, total: 0 };
+    // CORRECTED: Initializing overallSentimentCounts with 'positive', 'negative', 'neutral' keys
+    let overallSentimentCounts = { positive: 0, negative: 0, neutral: 0, total: 0 };
 
     // This is the crucial loop that processes each cluster
     for (const cluster of clusters) {
@@ -359,7 +362,8 @@ async function processYouTubeComments() {
                     summary: analysis.summary, 
                     clusterSize: cluster.length
                 });
-                const sentimentCategory = analysis.sentiment.toLowerCase();
+                const sentimentCategory = analysis.sentiment.toLowerCase(); // Will be 'positive', 'negative', 'neutral'
+                // CORRECTED: Incrementing counts based on the 'positive', 'negative', 'neutral' keys
                 if (overallSentimentCounts[sentimentCategory] !== undefined) {
                     overallSentimentCounts[sentimentCategory]++;
                 }
@@ -370,7 +374,7 @@ async function processYouTubeComments() {
 
     if (analysisResults.length > 0) {
         console.log("--- Sentiment & Summary by Cluster ---");
-        displayOverallSentiment(overallSentimentCounts);
+        displayOverallSentiment(overallSentimentCounts); // This function is now also updated
         displayClusterResults(analysisResults);
 
         chrome.runtime.sendMessage({
@@ -381,7 +385,6 @@ async function processYouTubeComments() {
                 clusterAnalysis: analysisResults
             }
         });
-        // **FIXED:** Removed: updateOverlayStatus("Analysis complete!"); // This line was hiding the results
     } else {
         updateOverlayStatus("No distinct discussion points could be analyzed. Check console for errors.");
         console.error("No analysis results were obtained from clusters.");
@@ -397,9 +400,7 @@ async function processYouTubeComments() {
 (async function() {
     console.log("Content script initiated.");
     // Check if it's a YouTube video page
-    // Note: The hostname for YouTube can vary based on context (e.g., normal browse vs. embedded)
-    // Using includes('youtube.com') is generally robust.
-    if (window.location.hostname.includes('youtube.com') && window.location.pathname.startsWith('/watch')) {
+    if (window.location.hostname.includes('youtube.com') && window.location.pathname.startsWith('/watch')) { // Corrected hostname check
         console.log("On a YouTube video page. Injecting overlay...");
         await injectOverlay();
         // Automatically start the analysis after overlay injection

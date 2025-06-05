@@ -88,6 +88,14 @@ def analyze_text():
         sentiment = response_json.get('sentiment')
         summary = response_json.get('summary')
 
+        # Safeguard: Only allow 'Positive', 'Negative', or 'Neutral' (case-insensitive)
+        allowed_sentiments = {'positive', 'negative', 'neutral'}
+        if not sentiment or sentiment.strip().lower() not in allowed_sentiments:
+            sentiment = 'Neutral'
+        else:
+            # Normalize to capitalized form for consistency
+            sentiment = sentiment.capitalize()
+
         if sentiment is None or summary is None: # Check if keys are actually present
             raise ValueError("Gemini response missing 'sentiment' or 'summary' key, or format is incorrect.")
         
