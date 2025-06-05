@@ -11,6 +11,20 @@ This branch of the YouTube Comment Sentiment Analysis Chrome Extension represent
     * Automatic determination of the optimal number of clusters (no more guessing `k`).
     * Explicit handling and identification of "noise" comments that don't fit into any dense cluster.
     * The entire clustering pipeline (UMAP + HDBSCAN) has been moved to the **Flask backend (`my_llm_backend/app.py`)**, leveraging Python's rich data science ecosystem for more efficient and scalable processing.
+
+    **Visualizing the Clustering Difference:**
+    To illustrate the power of HDBSCAN over traditional K-Means, consider how each algorithm handles complex data:
+
+    * **Traditional K-Means (Spherical Clusters):**
+        Based on empirical evidence, K-means is probably the most popular clustering algorithm. The algorithm itself is relatively simple: Starting with a pre-specified number of cluster centers (which can be distributed randomly or smartly (see `kmeans++`)), each point is initially assigned to its nearest center. In the next step, for each segment, the centers are moved to the centroid of the clustered points. The points are then reassigned to their nearest center. The process is repeated until moving the centers derives little or no improvement (measured by the within cluster sum of squares - the total squared distance between each point and its cluster center).
+        K-means performs quite well on datasets where clusters are globular (essentially spherical). However, it struggles and can underperform with clusters of different sizes, densities, or non-spherical shapes, as its underlying assumption is that clusters are roughly uniform and spherical.
+        ![K-Means Clustering Visualization - Spherical Data Example](images/kmeans_example.png)
+        *(Suggested image: A diagram showing K-Means struggling with non-spherical or varying density clusters, or a simple K-Means convergence animation if you have one.)*
+
+    * **Advanced HDBSCAN with UMAP (Complex Data & Noise Handling):**
+        ![HDBSCAN Clustering with UMAP Dimensionality Reduction - Complex Data Example](images/hdbscan_umap_example.png)
+        *(Suggested image: A visualization of HDBSCAN output, possibly on UMAP-reduced data, showing irregular cluster shapes and clearly marked noise points.)*
+
 * **Enhanced Chart.js Integration:** The extension now features a more robust and reliable display of sentiment distribution through **Chart.js**. We've implemented dynamic loading, proper destruction of previous chart instances, and rigorous availability checks to ensure the sentiment pie chart renders consistently and without conflicts.
 
 **WIP Notice:** This extension is currently a **Work in Progress (WIP)** and is under active development. Our goal is to evolve this into a fully-featured Chrome Extension with enhanced capabilities.
@@ -31,8 +45,12 @@ This branch of the YouTube Comment Sentiment Analysis Chrome Extension represent
 1.  **Comment Retrieval:** When activated on a YouTube video page, the extension fetches top-level comments using the YouTube Data API.
 2.  **Embedding Generation:** Each fetched comment is sent to a Flask backend, which uses Google Gemini's `embedding-001` model to generate a numerical vector (embedding) representing its semantic meaning.
 3.  **Advanced Clustering & Dimensionality Reduction (Backend Process):** Comments and their embeddings are then processed by the backend Python server (`my_llm_backend/app.py`). Here's the advanced pipeline:
-    * **UMAP Reduction:** The high-dimensional embeddings are first reduced to a more manageable 10 components using UMAP.
+    * **UMAP Reduction:** The high-dimensional embeddings are first reduced to a more manageable 10 components using UMAP. This step helps in distilling the most important features for clustering.
+        ![UMAP Dimensionality Reduction Diagram](images/umap_process.png)
+        *(Suggested image: A diagram illustrating UMAP's process of reducing dimensions while preserving local and global structures, perhaps showing points going from 3D to 2D.)*
     * **HDBSCAN Clustering:** The reduced embeddings are then fed into HDBSCAN, which identifies core clusters, sub-clusters, and noise points based on data density.
+        ![HDBSCAN Clustering Result - showing varied shapes and noise](images/hdbscan_result.png)
+        *(Suggested image: Another HDBSCAN result visualization, possibly zoomed in to show the density-based nature and how it finds irregular shapes and identifies noise.)*
     * This refined clustering provides more nuanced and accurate topic identification.
 4.  **Sentiment and Summary Analysis:** For each identified cluster (excluding noise points), a representative set of comments is sent to the Flask backend. The backend uses Google Gemini's `gemini-1.5-flash` model to analyze these comments, determine the overall sentiment (Positive, Negative, Neutral) of the cluster, and generate a concise summary.
 5.  **Display Results:** The analyzed data, including overall sentiment counts and detailed discussion points with their sentiments and summaries, is displayed in an overlay on the YouTube page. The Chart.js library is now dynamically loaded into the page's head to ensure charts render correctly, destroying any previous instances to prevent conflicts and memory issues.
@@ -125,4 +143,22 @@ To get this extension running, you need to set up both the Flask backend and the
     * Ensure your `GOOGLE_API_KEY` in the `.env` file is correct and has access to the Gemini API.
     * Sometimes, the LLM might return malformed JSON. The backend has error handling for this, but consistent errors might indicate a deeper issue with the API key or model access.
 * **No sentiment colors, or incorrect counts**:
-    * Ensure you have the latest versions of `content.js` and `sentiment_overlay.css` as provided in
+    * Ensure you have the latest versions of `content.js` and `sentiment_overlay.css` as provided in the most recent updates.
+    * Perform a **hard refresh** (`Ctrl + Shift + R` or `Cmd + Shift + R`) on the YouTube page after reloading the extension.
+    * Verify that the CSS classes `sentiment-positive`, `sentiment-negative`, `sentiment-neutral` are correctly defined in `sentiment_overlay.css` with the desired colors.
+* **Extension not appearing on YouTube pages**:
+    * Ensure "Developer mode" is enabled on `chrome://extensions/`.
+    * Check your `manifest.json` for correct `matches` patterns (`"https://www.youtube.com/watch?v=*"`).
+    * Verify that the `window.location.hostname.includes('youtube.com')` check in `content.js` is correct for your specific YouTube environment (it might vary slightly based on regional domains or browser versions). For most cases, `window.location.hostname.includes('youtube.com')` might be a more robust check.
+
+## Future Enhancements
+
+* **Full Extension Integration:** Transition from a basic content script overlay to a more robust, full Chrome Extension architecture with a dedicated popup and background scripting for improved performance and features.
+* **Reply Analysis:** Extend comment fetching to include replies and analyze sentiment within threaded discussions.
+* **User Customization:** Allow users to adjust clustering parameters or comments analyzed.
+* **Performance Improvements:** Optimize API calls and processing for faster analysis.
+* **Error Handling UI:** Provide more user-friendly error messages directly in the overlay.
+* **Visualizations:** Add more advanced charts or graphs for a more engaging display of sentiment distribution beyond the current pie chart.
+* **Custom Prompts:** Allow users to input custom prompts for specialized analysis.
+
+---
