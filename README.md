@@ -11,7 +11,7 @@ The YouTube Comment Sentiment Analysis Chrome Extension is a powerful tool desig
 * **Comment Fetching:** Automatically retrieves top-level comments from any YouTube video using the YouTube Data API.
 * **AI-Powered Sentiment Analysis:** Utilizes Google Gemini to determine the sentiment (Positive, Negative, Neutral) of individual discussion clusters.
 * **Discussion Point Summarization:** Gemini AI generates concise summaries for each identified discussion point, capturing the main collective sentiment and ideas.
-* **Comment Clustering:** Groups similar comments into coherent discussion points using embeddings and a simplified K-Means ![K-Means](icons/Pics/K-means_convergence.gif)clustering algorithm.
+* **Comment Clustering:** Groups similar comments into coherent discussion points using embeddings and a simplified K-Means ![K-Means clustering algorithm.](icons/Pics/K-means_convergence.gif)
 
 
 * **Overall Sentiment Breakdown:** Provides a quick overview of the total positive, negative, and neutral comments analyzed.
