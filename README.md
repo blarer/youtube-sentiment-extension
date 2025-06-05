@@ -18,7 +18,7 @@ This branch of the YouTube Comment Sentiment Analysis Chrome Extension represent
     * **Traditional K-Means (Spherical Clusters):**
         Based on empirical evidence, K-means is probably the most popular clustering algorithm. The algorithm itself is relatively simple: Starting with a pre-specified number of cluster centers (which can be distributed randomly or smartly (see `kmeans++`)), each point is initially assigned to its nearest center. In the next step, for each segment, the centers are moved to the centroid of the clustered points. The points are then reassigned to their nearest center. The process is repeated until moving the centers derives little or no improvement (measured by the within cluster sum of squares - the total squared distance between each point and its cluster center).
         K-means performs quite well on datasets where clusters are globular (essentially spherical). However, it struggles and can underperform with clusters of different sizes, densities, or non-spherical shapes, as its underlying assumption is that clusters are roughly uniform and spherical.
-        ![K-Means Clustering Visualization - Spherical Data Example](images/kmeans_example.png)
+        ![K-Means Clustering Visualization - Spherical Data Example](images/kmeans_example.gif)
         *(Suggested image: A diagram showing K-Means struggling with non-spherical or varying density clusters, or a simple K-Means convergence animation if you have one.)*
 
     * **Advanced HDBSCAN with UMAP (Complex Data & Noise Handling):**
