@@ -14,8 +14,6 @@ The YouTube Comment Sentiment Analysis Chrome Extension is a powerful tool desig
 * **Comment Clustering:** Groups similar comments into coherent discussion points using embeddings and a simplified K-Means clustering algorithm.
 * **Overall Sentiment Breakdown:** Provides a quick overview of the total positive, negative, and neutral comments analyzed.
 * **Interactive UI Overlay:** Displays analysis results directly on the YouTube video page in a clear, interactive overlay.
-* **Dark Mode Toggle:** User-friendly dark mode option for comfortable viewing.
-* **Persistent Preferences:** Saves dark mode preference using Chrome's local storage.
 
 ## How it Works
 
@@ -100,8 +98,7 @@ To get this extension running, you need to set up both the Flask backend and the
         * Overall Sentiment of Key Discussions (Positive, Negative, Neutral counts).
         * A list of "Key Discussion Points," each with its sentiment, a summary, and the number of comments in that point.
         * Clicking "View All Comments in this Point" will expand to show the actual comments contributing to that discussion.
-5.  **Dark Mode:** Use the "Dark Mode" toggle in the top right of the overlay to switch between light and dark themes. Your preference will be saved.
-6.  **Close Overlay:** Click the "X" button in the top right of the overlay to close it.
+5.  **Close Overlay:** Click the "X" button in the top right of the overlay to close it.
 
 ## Troubleshooting
 
