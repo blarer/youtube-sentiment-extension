@@ -227,7 +227,7 @@ summary:hover {
 
 #sentimentPieChart {
     flex: 0 0 120px; /* Fixed size, won't grow/shrink */
-    max-width: 120px;
-    max-height: 120px;
+    max-width: 180px;
+    max-height: 180px;
     margin-top: 10px; /* This might push it down slightly if align-items is flex-start */
 }
