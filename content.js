@@ -45,6 +45,14 @@ async function injectOverlay() {
             }
         });
         console.log("Overlay injected successfully.");
+
+        // After overlay is injected, apply dark mode if needed
+        chrome.runtime.sendMessage(
+            { action: "getDarkMode" },
+            (response) => {
+                setOverlayDarkMode(response && response.darkMode === true);
+            }
+        );
     } catch (error) {
         console.error("Failed to inject overlay:", error);
     }
@@ -457,5 +465,18 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         }
     } else if (request.action === "analysisUpdate") {
         updateOverlayStatus(request.message);
+    } else if (request.action === "setDarkMode") {
+        setOverlayDarkMode(request.darkMode);
     }
 });
+
+function setOverlayDarkMode(isDark) {
+    const overlay = document.getElementById('sentiment-analysis-overlay');
+    if (overlay) {
+        if (isDark) {
+            overlay.classList.add('dark-mode');
+        } else {
+            overlay.classList.remove('dark-mode');
+        }
+    }
+}

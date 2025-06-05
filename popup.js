@@ -31,5 +31,50 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
     } else if (request.action === "analysisUpdate") {
         statusDiv.textContent = request.message;
+    } else if (request.action === "setDarkMode") {
+        setOverlayDarkMode(request.darkMode);
     }
 });
+
+// On popup load, set the toggle state and popup dark mode
+document.addEventListener('DOMContentLoaded', () => {
+  chrome.storage.local.get(['darkMode'], (result) => {
+    const isDark = result.darkMode === true;
+    document.getElementById('darkModeToggle').checked = isDark;
+    setPopupDarkMode(isDark);
+  });
+
+  document.getElementById('darkModeToggle').addEventListener('change', (e) => {
+    const isDark = e.target.checked;
+    chrome.storage.local.set({ darkMode: isDark });
+    setPopupDarkMode(isDark);
+
+    // Send message to active tab to update overlay dark mode
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: "setDarkMode", darkMode: isDark });
+      }
+    });
+  });
+});
+
+function setPopupDarkMode(isDark) {
+  if (isDark) {
+    document.body.style.background = "#222";
+    document.body.style.color = "#eee";
+  } else {
+    document.body.style.background = "";
+    document.body.style.color = "";
+  }
+}
+
+function setOverlayDarkMode(isDark) {
+  const overlay = document.getElementById('sentiment-analysis-overlay');
+  if (overlay) {
+    if (isDark) {
+      overlay.classList.add('dark-mode');
+    } else {
+      overlay.classList.remove('dark-mode');
+    }
+  }
+}

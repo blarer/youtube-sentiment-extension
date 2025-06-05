@@ -26,5 +26,11 @@ chrome.action.onClicked.addListener((tab) => {
           // - Update the popup UI
           // - Show a browser notification
       }
+      if (request.action === "getDarkMode") {
+        chrome.storage.local.get(['darkMode'], (result) => {
+          sendResponse({ darkMode: result.darkMode });
+        });
+        return true; // Required to indicate async response
+      }
       // No 'return true' needed here as this listener is not sending an async response.
   });
