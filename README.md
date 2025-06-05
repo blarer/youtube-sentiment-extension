@@ -1,8 +1,17 @@
-# YouTube Comment Sentiment Analysis Chrome Extension
+# YouTube Comment Sentiment Analysis Chrome Extension (Advanced Clustering Branch)
 
-## Overview
+## Overview & Key Advancements
 
-The YouTube Comment Sentiment Analysis Chrome Extension is a powerful tool designed to help users quickly understand the collective sentiment and key discussion points within a YouTube video's comment section. By leveraging Google's Gemini AI for natural language processing and embeddings, the extension fetches comments, clusters them into distinct discussion topics, and provides an overall sentiment breakdown, along with sentiment and a concise summary for each major discussion point.
+This branch of the YouTube Comment Sentiment Analysis Chrome Extension represents a significant upgrade in its analytical capabilities. While maintaining its core function of helping users understand collective sentiment and key discussion points, this version introduces **advanced clustering techniques** and **improved data visualization**.
+
+**What's new in this branch:**
+
+* **Next-Gen Clustering with HDBSCAN & UMAP:** We've moved beyond simplified K-Means. This version now employs **HDBSCAN** (Hierarchical Density-Based Spatial Clustering of Applications with Noise) for more robust and accurate topic detection. This is coupled with **UMAP** for powerful dimensionality reduction, which preprocesses comment embeddings to 10 components. This combination allows for:
+    * Discovery of clusters with varying shapes and densities.
+    * Automatic determination of the optimal number of clusters (no more guessing `k`).
+    * Explicit handling and identification of "noise" comments that don't fit into any dense cluster.
+    * The entire clustering pipeline (UMAP + HDBSCAN) has been moved to the **Flask backend (`my_llm_backend/app.py`)**, leveraging Python's rich data science ecosystem for more efficient and scalable processing.
+* **Enhanced Chart.js Integration:** The extension now features a more robust and reliable display of sentiment distribution through **Chart.js**. We've implemented dynamic loading, proper destruction of previous chart instances, and rigorous availability checks to ensure the sentiment pie chart renders consistently and without conflicts.
 
 **WIP Notice:** This extension is currently a **Work in Progress (WIP)** and is under active development. Our goal is to evolve this into a fully-featured Chrome Extension with enhanced capabilities.
 
@@ -11,17 +20,22 @@ The YouTube Comment Sentiment Analysis Chrome Extension is a powerful tool desig
 * **Comment Fetching:** Automatically retrieves top-level comments from any YouTube video using the YouTube Data API.
 * **AI-Powered Sentiment Analysis:** Utilizes Google Gemini to determine the sentiment (Positive, Negative, Neutral) of individual discussion clusters.
 * **Discussion Point Summarization:** Gemini AI generates concise summaries for each identified discussion point, capturing the main collective sentiment and ideas.
-* **Advanced Comment Clustering:** Employs **HDBSCAN** (Hierarchical Density-Based Spatial Clustering of Applications with Noise) for more robust clustering, capable of discovering clusters of varying shapes and densities. It uses **UMAP** dimensionality reduction to preprocess comment embeddings to 10 components, improving clustering efficiency and quality, and automatically determines the optimal number of clusters without needing a predefined `k`. Noise points (comments not assigned to any cluster) are also explicitly handled.
+* **Advanced Comment Clustering (HDBSCAN & UMAP):** As detailed above, comments are grouped into coherent discussion points using a sophisticated, density-based approach that adapts to the data's natural structure.
 * **Overall Sentiment Breakdown:** Provides a quick overview of the total positive, negative, and neutral comments analyzed.
-* **Interactive UI Overlay:** Displays analysis results directly on the YouTube video page in a clear, interactive overlay, now with **improved Chart.js loading** for reliable rendering of the sentiment distribution pie chart.
+* **Interactive UI Overlay:** Displays analysis results directly on the YouTube video page in a clear, interactive overlay, now with improved chart rendering.
+* **Dark Mode Toggle:** User-friendly dark mode option for comfortable viewing.
+* **Persistent Preferences:** Saves dark mode preference using Chrome's local storage.
 
 ## How it Works
 
 1.  **Comment Retrieval:** When activated on a YouTube video page, the extension fetches top-level comments using the YouTube Data API.
 2.  **Embedding Generation:** Each fetched comment is sent to a Flask backend, which uses Google Gemini's `embedding-001` model to generate a numerical vector (embedding) representing its semantic meaning.
-3.  **Clustering & Dimensionality Reduction (Backend):** Comments and their embeddings are sent to the backend Python server (`my_llm_backend/app.py`). Here, **UMAP** is applied to reduce the dimensionality of the embeddings, followed by **HDBSCAN** to group similar comments into coherent discussion points. This process automatically identifies different discussion topics and handles noise, leveraging Python's data science libraries.
-4.  **Sentiment and Summary Analysis:** For each identified cluster, a representative set of comments is sent to the Flask backend. The backend uses Google Gemini's `gemini-1.5-flash` model to analyze these comments, determine the overall sentiment (Positive, Negative, Neutral) of the cluster, and generate a concise summary.
-5.  **Display Results:** The analyzed data, including overall sentiment counts and detailed discussion points with their sentiments and summaries, is displayed in an overlay on the YouTube page. The Chart.js library is now dynamically loaded into the page's head to ensure charts render correctly, destroying any previous instances to prevent conflicts.
+3.  **Advanced Clustering & Dimensionality Reduction (Backend Process):** Comments and their embeddings are then processed by the backend Python server (`my_llm_backend/app.py`). Here's the advanced pipeline:
+    * **UMAP Reduction:** The high-dimensional embeddings are first reduced to a more manageable 10 components using UMAP.
+    * **HDBSCAN Clustering:** The reduced embeddings are then fed into HDBSCAN, which identifies core clusters, sub-clusters, and noise points based on data density.
+    * This refined clustering provides more nuanced and accurate topic identification.
+4.  **Sentiment and Summary Analysis:** For each identified cluster (excluding noise points), a representative set of comments is sent to the Flask backend. The backend uses Google Gemini's `gemini-1.5-flash` model to analyze these comments, determine the overall sentiment (Positive, Negative, Neutral) of the cluster, and generate a concise summary.
+5.  **Display Results:** The analyzed data, including overall sentiment counts and detailed discussion points with their sentiments and summaries, is displayed in an overlay on the YouTube page. The Chart.js library is now dynamically loaded into the page's head to ensure charts render correctly, destroying any previous instances to prevent conflicts and memory issues.
 
 ## Setup and Installation
 
@@ -50,7 +64,7 @@ To get this extension running, you need to set up both the Flask backend and the
     ```bash
     pip install Flask google-generativeai python-dotenv Flask-Cors requests umap-learn hdbscan scikit-learn
     ```
-    *(Note: `umap-learn`, `hdbscan`, `scikit-learn` are new dependencies for the advanced clustering)*
+    *(Note: `umap-learn`, `hdbscan`, `scikit-learn` are new essential dependencies for the advanced clustering)*
 
 4.  **Create a `.env` file:**
     In the `my_llm_backend` directory (where your `app.py` is located), create a file named `.env` and add your API keys:
@@ -111,22 +125,4 @@ To get this extension running, you need to set up both the Flask backend and the
     * Ensure your `GOOGLE_API_KEY` in the `.env` file is correct and has access to the Gemini API.
     * Sometimes, the LLM might return malformed JSON. The backend has error handling for this, but consistent errors might indicate a deeper issue with the API key or model access.
 * **No sentiment colors, or incorrect counts**:
-    * Ensure you have the latest versions of `content.js` and `sentiment_overlay.css` as provided in the most recent updates.
-    * Perform a **hard refresh** (`Ctrl + Shift + R` or `Cmd + Shift + R`) on the YouTube page after reloading the extension.
-    * Verify that the CSS classes `sentiment-positive`, `sentiment-negative`, `sentiment-neutral` are correctly defined in `sentiment_overlay.css` with the desired colors.
-* **Extension not appearing on YouTube pages**:
-    * Ensure "Developer mode" is enabled on `chrome://extensions/`.
-    * Check your `manifest.json` for correct `matches` patterns (`"https://www.youtube.com/watch?v=*"`).
-    * Verify that the `window.location.hostname.includes('youtube.com')` check in `content.js` is correct for your specific YouTube environment (it might vary slightly based on regional domains or browser versions). For most cases, `window.location.hostname.includes('youtube.com')` might be a more robust check.
-
-## Future Enhancements
-
-* **Full Extension Integration:** Transition from a basic content script overlay to a more robust, full Chrome Extension architecture with a dedicated popup and background scripting for improved performance and features.
-* **Reply Analysis:** Extend comment fetching to include replies and analyze sentiment within threaded discussions.
-* **User Customization:** Allow users to adjust the number of clusters or comments analyzed.
-* **Performance Improvements:** Optimize API calls and processing for faster analysis.
-* **Error Handling UI:** Provide more user-friendly error messages directly in the overlay.
-* **Visualizations:** Add more advanced charts or graphs for a more engaging display of sentiment distribution.
-* **Custom Prompts:** Allow users to input custom prompts for specialized analysis.
-
----
+    * Ensure you have the latest versions of `content.js` and `sentiment_overlay.css` as provided in
