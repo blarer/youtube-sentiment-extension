@@ -1,4 +1,3 @@
-# my_llm_backend/app.py
 import os
 from flask import Flask, request, jsonify
 import google.generativeai as genai
@@ -65,7 +64,7 @@ def analyze_text():
         Your response MUST be a JSON object with exactly two keys: 'sentiment' and 'summary'.
         -   The 'sentiment' key should contain one of 'Positive', 'Negative', or 'Neutral'.
         -   The 'summary' key should contain your concise summary string.
-
+        -   Do not put anything other than 'Positive', 'Negative', or 'Neutral'. you need to clearly state it 
         Example of desired response format:
         {{
             "sentiment": "Positive",
@@ -141,38 +140,36 @@ def get_embedding():
         print(f"Error calling Gemini API for embedding: {e}")
         return jsonify({"error": f"Internal server error: {e}"}), 500
 
-# --- NEW ENDPOINT: Fetch YouTube Comments using YouTube Data API ---
+# --- MODIFIED ENDPOINT: Fetch YouTube Comments using YouTube Data API ---
 
 @app.route('/get_youtube_comments', methods=['POST'])
 def get_youtube_comments():
     """
-    Receives a videoId, fetches comments using the YouTube Data API,
-    and returns them.
+    Receives a videoId and an optional maxComments parameter, fetches comments
+    using the YouTube Data API with pagination, and returns them.
     """
     data = request.get_json()
     if not data or 'videoId' not in data:
         return jsonify({"error": "No 'videoId' field found in request body"}), 400
 
     video_id = data['videoId']
+    # Get maxComments from request, default to 500 if not provided
+    max_comments_to_fetch = data.get('maxComments', 500) 
+    
     comments_list = []
-    
-    # Max results per page for YouTube Data API is 100
-    # We'll fetch multiple pages to get more comments, up to a total limit
-    max_total_comments = 200 # Adjust this limit as needed based on your quota
-    
     next_page_token = None
     
-    print(f"Fetching comments for video ID: {video_id} using YouTube Data API...")
+    print(f"Fetching comments for video ID: {video_id}, up to {max_comments_to_fetch} comments using YouTube Data API...")
 
     try:
-        while len(comments_list) < max_total_comments:
+        while len(comments_list) < max_comments_to_fetch:
             youtube_api_url = "https://www.googleapis.com/youtube/v3/commentThreads"
             params = {
                 "part": "snippet",
                 "videoId": video_id,
                 "key": YOUTUBE_API_KEY,
                 "textFormat": "plainText",
-                "maxResults": 100 # Max allowed per request
+                "maxResults": 100 # Max allowed by YouTube Data API per request
             }
             if next_page_token:
                 params["pageToken"] = next_page_token
@@ -184,7 +181,8 @@ def get_youtube_comments():
             for item in data.get('items', []):
                 comment_text = item['snippet']['topLevelComment']['snippet']['textDisplay']
                 comments_list.append(comment_text)
-                if len(comments_list) >= max_total_comments:
+                # Break early if we've reached or exceeded the desired number of comments
+                if len(comments_list) >= max_comments_to_fetch:
                     break
             
             next_page_token = data.get('nextPageToken')

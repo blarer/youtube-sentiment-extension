@@ -3,6 +3,9 @@
 // Backend server URL
 const BACKEND_URL = "http://127.0.0.1:5000";
 
+// NEW: Define a default maximum number of comments to try and fetch from the backend
+const DEFAULT_MAX_COMMENTS_FETCH = 500; // Aim to fetch up to 500 comments for analysis
+
 // --- UI Injection and Update Functions ---
 
 // Function to get the YouTube video ID from the current URL
@@ -268,18 +271,18 @@ async function analyzeText(text) {
     }
 }
 
-// NEW Function: Fetch YouTube Comments from backend
-async function fetchYouTubeComments(videoId) {
-    console.log("Sending POST to /get_youtube_comments with videoId:", videoId);
-    console.log("fetchYouTubeComments called for video ID:", videoId);
-    updateOverlayStatus("Fetching comments via YouTube Data API...");
+// NEW Function: Fetch YouTube Comments from backend with maxComments pagination control
+async function fetchYouTubeComments(videoId, maxComments) {
+    console.log(`Sending POST to /get_youtube_comments for videoId: ${videoId} with maxComments: ${maxComments}`);
+    updateOverlayStatus(`Fetching up to ${maxComments} comments via YouTube Data API...`);
     try {
         const response = await fetch(`${BACKEND_URL}/get_youtube_comments`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ videoId: videoId })
+            // Pass maxComments to the backend
+            body: JSON.stringify({ videoId: videoId, maxComments: maxComments }) 
         });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status} - ${await response.text()}`);
@@ -311,7 +314,8 @@ async function processYouTubeComments() {
     }
     if (currentAnalysisToken !== myToken) return;
 
-    const comments = await fetchYouTubeComments(videoId);
+    // Use the new fetchYouTubeComments with maxComments parameter
+    const comments = await fetchYouTubeComments(videoId, DEFAULT_MAX_COMMENTS_FETCH);
     if (currentAnalysisToken !== myToken) return;
 
     if (comments.length === 0) {
@@ -322,7 +326,7 @@ async function processYouTubeComments() {
     if (currentAnalysisToken !== myToken) return;
 
     updateOverlayStatus(`Found ${comments.length} comments. Getting embeddings...`);
-    const embeddingLimit = Math.min(comments.length, 100);
+    const embeddingLimit = Math.min(comments.length, 500); // Still limit embeddings to 100 as per previous discussion
     // Only process up to embeddingLimit comments
     const commentsToEmbed = comments.slice(0, embeddingLimit);
     let processedEmbeddingCount = 0;
@@ -425,6 +429,10 @@ async function processYouTubeComments() {
             error: "No analysis results from clusters."
         });
     }
+
+    // After you have comments, update the span with the total number of comments fetched
+    const commentsAnalyzedSpan = document.getElementById('overlay-comments-analyzed');
+    if (commentsAnalyzedSpan) commentsAnalyzedSpan.textContent = comments.length; // MODIFIED LINE
 }
 
 let currentVideoId = null;
@@ -531,8 +539,8 @@ function renderSentimentPieChart(sentimentCounts) {
     // --- End new log ---
 
     if (typeof window.Chart !== 'function') {
-         console.error("Chart.js is not available (window.Chart is not a function). Cannot render chart.");
-         return; // Exit if Chart.js is not available
+           console.error("Chart.js is not available (window.Chart is not a function). Cannot render chart.");
+           return; // Exit if Chart.js is not available
     }
 
     window.sentimentPieChart = new Chart(ctx, {

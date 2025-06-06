@@ -162,3 +162,5 @@ To get this extension running, you need to set up both the Flask backend and the
 * **Custom Prompts:** Allow users to input custom prompts for specialized analysis.
 
 ---
+
+<div id="overlay-comment-count"></div>
